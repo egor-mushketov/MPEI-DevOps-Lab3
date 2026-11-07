@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Московская афиша — Геопоиск событий в радиусе N метров</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <h1>Московская афиша: Геопоиск</h1>
+      <span class="badge">Задача 2 · Поиск в радиусе N метров</span>
+    </div>
+    <div class="topbar__meta" id="meta-info">
+      Загрузка метаданных API...
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="sidebar">
+      <form id="search-form" class="panel">
+        <h2>1. Исходная точка и радиус (N м)</h2>
+        <p class="hint">Кликните по карте справа или введите координаты вручную</p>
+
+        <div class="presets">
+          <button type="button" class="btn-chip" id="btn-control-point">Контрольная точка (Театральная пл.)</button>
+          <button type="button" class="btn-chip" data-lat="55.832969" data-lon="37.618523" data-rad="3000">ВДНХ (3 км)</button>
+          <button type="button" class="btn-chip" data-lat="55.735439" data-lon="37.606337" data-rad="2500">Парк Горького (2.5 км)</button>
+          <button type="button" class="btn-chip" data-lat="55.752023" data-lon="37.617499" data-rad="15000">Вся Москва (15 км)</button>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Широта (latitude)</span>
+            <input type="number" id="latitude" step="0.000001" min="-90" max="90" value="55.760236" required>
+          </label>
+          <label class="field">
+            <span>Долгота (longitude)</span>
+            <input type="number" id="longitude" step="0.000001" min="-180" max="180" value="37.618498" required>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field__row">
+            <span>Радиус поиска N (метров): <strong id="radius-label">3000 м</strong></span>
+            <span class="sub">1 – 100 000 м</span>
+          </div>
+          <div class="radius-controls">
+            <input type="range" id="radius-slider" min="100" max="25000" step="100" value="3000">
+            <input type="number" id="radius_m" min="1" max="100000" step="1" value="3000" required>
+          </div>
+        </div>
+
+        <h2>2. Дополнительные фильтры</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Жанр</span>
+            <select id="genre_code">
+              <option value="">Все жанры</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Округ Москвы</span>
+            <select id="district_code">
+              <option value="">Все округа</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid-3">
+          <label class="field">
+            <span>Статус</span>
+            <select id="status">
+              <option value="published" selected>published (опубликовано)</option>
+              <option value="draft">draft (черновик)</option>
+              <option value="cancelled">cancelled (отменено)</option>
+              <option value="archived">archived (архив)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Возраст до</span>
+            <select id="age_max">
+              <option value="">Любой</option>
+              <option value="0">0+</option>
+              <option value="6">6+</option>
+              <option value="12">12+</option>
+              <option value="16">16+</option>
+              <option value="18">18+</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Мин. билетов</span>
+            <input type="number" id="tickets_min" min="0" placeholder="Напр. 1">
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Цена от (₽)</span>
+            <input type="number" id="price_min" min="0" placeholder="0">
+          </label>
+          <label class="field">
+            <span>Цена до (₽)</span>
+            <input type="number" id="price_max" min="0" placeholder="20000">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Поиск по названию или описанию (q)</span>
+          <input type="text" id="q" maxlength="250" placeholder="Введите текст...">
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="btn-primary">Найти события в радиусе</button>
+          <button type="button" id="btn-reset" class="btn-secondary">Сбросить</button>
+        </div>
+      </form>
+
+      <section class="results-section">
+        <div class="results-header">
+          <h2>Найденные события <span id="total-count" class="count-pill">0</span></h2>
+          <div class="pagination">
+            <button type="button" id="prev-page" class="btn-page" disabled>←</button>
+            <span id="page-info">Стр. 1</span>
+            <button type="button" id="next-page" class="btn-page" disabled>→</button>
+          </div>
+        </div>
+        <div id="error-box" class="error-box hidden"></div>
+        <div id="events-list" class="events-list"></div>
+      </section>
+    </section>
+
+    <section class="map-container">
+      <div id="map"></div>
+      <div class="map-legend">
+        <span><i class="dot dot--origin"></i> Исходная точка и радиус N м</span>
+        <span><i class="dot dot--event"></i> Площадки найденных событий</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="./app.js"></script>
+</body>
+</html>
